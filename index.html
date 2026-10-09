@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PLKN@POLYCC | Dashboard Pemantauan Penyertaan Pelajar</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ══════════════════════════════════════════════════════════════════
+       POLYCC CORPORATE COLOUR TOKENS
+       ══════════════════════════════════════════════════════════════════
+       To change the theme, edit only the values in this :root block.
+       All colours throughout the dashboard are derived from these tokens.
+
+       PRIMARY   #1E3A5F  — Deep Slate Blue  (header, primary actions)
+       SECONDARY #4A90B8  — Steel Blue       (accents, chart highlight)
+       DARK      #111827  — Near-black        (headings, body text)
+       BG        #F0F2F5  — Cool light grey   (page background)
+       SURFACE   #FFFFFF  — Card surface
+       BORDER    #D1D9E0  — Cool neutral border
+       MUTED     #6B7A8D  — Muted label text
+       LIGHT     #F4F6F9  — Light tinted surface (insights, table head)
+    ══════════════════════════════════════════════════════════════════ */
+    :root {
+      --c-primary:     #1E3A5F;
+      --c-primary-d:   #152C48;
+      --c-primary-l:   #E8EEF5;
+      --c-secondary:   #4A90B8;
+      --c-secondary-l: #EBF4FA;
+      --c-dark:        #111827;
+      --c-bg:          #F0F2F5;
+      --c-surface:     #FFFFFF;
+      --c-border:      #D1D9E0;
+      --c-muted:       #6B7A8D;
+      --c-light:       #F4F6F9;
+      --c-hover-row:   #F8FAFC;
+      --c-hover-th:    #E8EEF5;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: var(--c-bg);
+      color: var(--c-dark);
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--c-primary);
+      color: #fff;
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 4px solid var(--c-secondary);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-logo {
+      width: 44px; height: 44px;
+      background: var(--c-secondary);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 900; color: var(--c-primary);
+      flex-shrink: 0;
+      letter-spacing: -1px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.2px; }
+    header .header-sub { font-size: 0.78rem; color: rgba(255,255,255,0.65); margin-top: 1px; }
+    .header-badge {
+      background: rgba(74,144,184,0.20);
+      color: #A8C8E8;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+      border: 1px solid rgba(74,144,184,0.38);
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      background: var(--c-surface);
+      border-bottom: 1px solid var(--c-border);
+      padding: 12px 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-label { font-size: 0.78rem; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+    #institusiFilter {
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      border: 1px solid var(--c-border);
+      border-radius: 6px;
+      background: var(--c-surface);
+      color: var(--c-dark);
+      cursor: pointer;
+      min-width: 200px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #institusiFilter:focus { border-color: var(--c-primary); }
+    .btn-reset {
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: var(--c-primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn-reset:hover { background: var(--c-primary-d); }
+    .btn-reset:active { transform: scale(0.97); }
+    .filter-status {
+      font-size: 0.78rem;
+      color: var(--c-muted);
+      margin-left: auto;
+    }
+    .filter-status strong { color: var(--c-primary); }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 1280px;
+      margin: 28px auto;
+      padding: 0 28px;
+      display: grid;
+      gap: 22px;
+    }
+
+    /* ── KPI cards ── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .kpi-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-top: 4px solid var(--c-secondary);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 18px rgba(139,26,26,0.09); transform: translateY(-2px); }
+    .kpi-card.navy { border-top-color: var(--c-primary); }
+    .kpi-card.navy .kpi-icon { background: var(--c-primary-l); }
+    .kpi-card.navy .kpi-icon svg { stroke: var(--c-primary); }
+    .kpi-card.navy .kpi-value { color: var(--c-primary); }
+    .kpi-icon {
+      width: 46px; height: 46px;
+      background: var(--c-secondary-l);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .kpi-icon svg { width: 22px; height: 22px; stroke: var(--c-secondary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.7px; color: var(--c-muted); font-weight: 700; }
+    .kpi-value { font-size: 2rem; font-weight: 800; color: var(--c-primary); line-height: 1.1; }
+    .kpi-pct   { font-size: 0.72rem; color: var(--c-muted); margin-top: 2px; }
+
+    /* ── Section cards ── */
+    .section-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 22px 26px;
+    }
+    .section-card h2 {
+      font-size: 0.82rem; font-weight: 700; color: var(--c-primary);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--c-light);
+    }
+
+    /* ── Charts row ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+      align-items: stretch;  /* both cards same height */
+    }
+
+    /* ── Donut card inner layout ── */
+    .donut-card {
+      display: flex;
+      flex-direction: column;
+    }
+    .donut-chart-area {
+      flex: 1;                        /* fills remaining height after the title */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0 4px;             /* balanced breathing room */
+    }
+    .donut-chart-area canvas {
+      max-width: 240px;               /* cap canvas so it doesn't overflow */
+      width: 100% !important;
+    }
+
+    /* ── Insights grid ── */
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .insight-item {
+      background: var(--c-light);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .insight-item-label {
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--c-muted); font-weight: 700; margin-bottom: 4px;
+    }
+    .insight-item-value {
+      font-size: 1rem; font-weight: 700; color: var(--c-primary); line-height: 1.3;
+    }
+    .insight-item-note { font-size: 0.72rem; color: var(--c-muted); margin-top: 2px; }
+
+    /* ── Table ── */
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    #tableSearch {
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      border: 1px solid var(--c-border);
+      border-radius: 6px;
+      outline: none;
+      min-width: 220px;
+      transition: border-color 0.2s;
+    }
+    #tableSearch:focus { border-color: var(--c-primary); }
+    .table-count { font-size: 0.78rem; color: var(--c-muted); margin-left: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th {
+      text-align: left; padding: 9px 14px;
+      background: var(--c-light);
+      border-bottom: 2px solid var(--c-border);
+      color: var(--c-primary); font-weight: 700; font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { background: var(--c-hover-th); }
+    thead th .sort-arrow { margin-left: 4px; opacity: 0.4; font-size: 0.7rem; }
+    thead th.active-sort .sort-arrow { opacity: 1; color: var(--c-secondary); }
+    tbody tr { border-bottom: 1px solid var(--c-light); transition: background 0.12s; }
+    tbody tr:hover { background: var(--c-hover-row); }
+    tbody td { padding: 9px 14px; color: var(--c-dark); }
+    tbody td.num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .no-data { text-align: center; color: var(--c-muted); padding: 28px; font-size: 0.85rem; }
+
+    /* Inline gender bar */
+    .gender-bar-wrap { display: flex; align-items: center; gap: 6px; }
+    .gender-bar { height: 5px; border-radius: 3px; flex: 1; background: var(--c-border); overflow: hidden; }
+    .gender-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--c-primary), var(--c-secondary)); transition: width 0.4s; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 18px;
+      font-size: 0.75rem; color: var(--c-muted);
+      border-top: 1px solid var(--c-border); margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══ -->
+  <header>
+    <div class="header-left">
+      <div class="header-logo">PK</div>
+      <div>
+        <h1>PLKN@POLYCC | Dashboard Pemantauan Penyertaan Pelajar</h1>
+        <div class="header-sub">Kementerian Pendidikan Malaysia</div>
+      </div>
+    </div>
+    <div class="header-badge">SESI 2025</div>
+  </header>
+
+  <!-- ═══ FILTER BAR ═══ -->
+  <div class="filter-bar">
+    <span class="filter-label">Tapis Institusi:</span>
+    <select id="institusiFilter" onchange="applyFilter()">
+      <option value="">Semua Institusi</option>
+    </select>
+    <button class="btn-reset" onclick="resetFilter()">↺ Tetapkan Semula</button>
+    <span class="filter-status" id="filterStatus"></span>
+  </div>
+
+  <!-- ═══ MAIN ═══ -->
+  <main>
+
+    <!-- 1. KPI CARDS -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div class="kpi-label">Jumlah Peserta</div>
+          <div class="kpi-value" id="kpiTotal">—</div>
+          <div class="kpi-pct" id="kpiTotalSub">Keseluruhan peserta berdaftar</div>
+        </div>
+      </div>
+      <div class="kpi-card navy">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div>
+          <div class="kpi-label">Jumlah Institusi</div>
+          <div class="kpi-value" id="kpiInstitutions">—</div>
+          <div class="kpi-pct" id="kpiInstSub">Politeknik &amp; Kolej Komuniti</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 8-8"/><path d="M20 20v-1a4 4 0 0 0-4-4h-1"/></svg>
+        </div>
+        <div>
+          <div class="kpi-label">Peserta Lelaki</div>
+          <div class="kpi-value" id="kpiLelaki">—</div>
+          <div class="kpi-pct" id="kpiLelakiPct">—</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
+        </div>
+        <div>
+          <div class="kpi-label">Peserta Perempuan</div>
+          <div class="kpi-value" id="kpiPerempuan">—</div>
+          <div class="kpi-pct" id="kpiPerempuanPct">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. CHARTS ROW -->
+    <div class="charts-row">
+      <!-- Horizontal bar — larger left column (1fr) -->
+      <div class="section-card">
+        <h2>Peserta mengikut Institusi (Tertinggi ke Terendah)</h2>
+        <div style="overflow-y:auto; max-height:440px;">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <!-- Donut — fixed right column (300px), centred with flexbox -->
+      <div class="section-card donut-card">
+        <h2>Komposisi Jantina</h2>
+        <div class="donut-chart-area">
+          <canvas id="donutChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. INSIGHTS + TABLE (side by side) -->
+    <div style="display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start;">
+
+      <!-- Ringkasan Pemantauan -->
+      <div class="section-card">
+        <h2>Ringkasan Pemantauan</h2>
+        <div class="insights-grid" id="insightsGrid">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="section-card">
+        <h2>Rekod Institusi</h2>
+        <div class="table-toolbar">
+          <input type="text" id="tableSearch" placeholder="Cari nama institusi…" oninput="renderTable()" />
+          <span class="table-count" id="tableCount"></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortTable('institusi')" id="th-institusi">Institusi <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable('lelaki')"    id="th-lelaki"    style="text-align:right">Lelaki <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable('perempuan')" id="th-perempuan" style="text-align:right">Perempuan <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable('jumlah')"    id="th-jumlah"    style="text-align:right">Jumlah <span class="sort-arrow">↕</span></th>
+              <th style="min-width:100px;">Nisbah L/P</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer>
+    PLKN@POLYCC &copy; 2025 &mdash; Kementerian Pendidikan Malaysia &nbsp;|&nbsp; Data dikira semula secara dinamik daripada rekod sumber
+  </footer>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // SOURCE DATA — original Excel dataset, unchanged
+    // ═══════════════════════════════════════════════════════════════════
+    const SOURCE = [
+      { institusi: "PUO",    lelaki: 176,  perempuan: 64,  jumlah: 240  },
+      { institusi: "POLISAS",lelaki: 250,  perempuan: 231, jumlah: 481  },
+      { institusi: "POLIMAS",lelaki: 204,  perempuan: 302, jumlah: 506  },
+      { institusi: "PKB",    lelaki: 306,  perempuan: 202, jumlah: 508  },
+      { institusi: "PKS",    lelaki: 205,  perempuan: 121, jumlah: 326  },
+      { institusi: "PPD",    lelaki: 384,  perempuan: 268, jumlah: 652  },
+      { institusi: "PKK",    lelaki: 238,  perempuan: 90,  jumlah: 328  },
+      { institusi: "PSA",    lelaki: 1232, perempuan: 802, jumlah: 2034 },
+      { institusi: "PIS",    lelaki: 254,  perempuan: 195, jumlah: 449  },
+      { institusi: "PSP",    lelaki: 791,  perempuan: 702, jumlah: 1493 },
+      { institusi: "PMK",    lelaki: 84,   perempuan: 100, jumlah: 184  },
+      { institusi: "PKT",    lelaki: 84,   perempuan: 25,  jumlah: 109  },
+      { institusi: "PSMZA",  lelaki: 194,  perempuan: 48,  jumlah: 242  },
+      { institusi: "PMM",    lelaki: 402,  perempuan: 390, jumlah: 792  },
+      { institusi: "PSAS",   lelaki: 864,  perempuan: 462, jumlah: 1326 },
+      { institusi: "PTSB",   lelaki: 204,  perempuan: 150, jumlah: 354  },
+      { institusi: "PSIS",   lelaki: 124,  perempuan: 153, jumlah: 277  },
+      { institusi: "PTSS",   lelaki: 158,  perempuan: 297, jumlah: 455  },
+      { institusi: "PMS",    lelaki: 137,  perempuan: 193, jumlah: 330  },
+      { institusi: "PMU",    lelaki: 117,  perempuan: 61,  jumlah: 178  },
+      { institusi: "PBU",    lelaki: 76,   perempuan: 71,  jumlah: 147  },
+      { institusi: "PJK",    lelaki: 79,   perempuan: 36,  jumlah: 115  },
+      { institusi: "PNS",    lelaki: 207,  perempuan: 220, jumlah: 427  },
+      { institusi: "PBS",    lelaki: 401,  perempuan: 105, jumlah: 506  },
+      { institusi: "PMJ",    lelaki: 273,  perempuan: 306, jumlah: 579  },
+      { institusi: "PHT",    lelaki: 21,   perempuan: 49,  jumlah: 70   },
+      { institusi: "PSS",    lelaki: 205,  perempuan: 141, jumlah: 346  },
+      { institusi: "PMKL",   lelaki: 25,   perempuan: 38,  jumlah: 63   },
+      { institusi: "PMKU",   lelaki: 2,    perempuan: 20,  jumlah: 22   },
+      { institusi: "PMJB",   lelaki: 27,   perempuan: 29,  jumlah: 56   },
+      { institusi: "PMBS",   lelaki: 12,   perempuan: 18,  jumlah: 30   },
+      { institusi: "PMTG",   lelaki: 36,   perempuan: 45,  jumlah: 81   },
+      { institusi: "PTSN",   lelaki: 129,  perempuan: 107, jumlah: 236  },
+      { institusi: "PBT",    lelaki: 51,   perempuan: 100, jumlah: 151  },
+      { institusi: "PMSN",   lelaki: 10,   perempuan: 4,   jumlah: 14   },
+      { institusi: "PTS",    lelaki: 24,   perempuan: 9,   jumlah: 33   },
+      { institusi: "KKBDA",  lelaki: 29,   perempuan: 3,   jumlah: 32   },
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════
+    let activeFilter  = "";   // "" = all institutions
+    let sortKey       = "jumlah";
+    let sortAsc       = false;
+    let donutChart    = null;
+    let barChart      = null;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════════
+    const fmt  = n => n.toLocaleString("ms-MY");
+    const pct  = (a, b) => b === 0 ? "0.0" : (a / b * 100).toFixed(1);
+
+    function getView() {
+      // Returns subset of SOURCE based on active filter
+      if (!activeFilter) return SOURCE;
+      return SOURCE.filter(d => d.institusi === activeFilter);
+    }
+
+    function aggregate(rows) {
+      return {
+        jumlah:    rows.reduce((s, d) => s + d.jumlah,    0),
+        lelaki:    rows.reduce((s, d) => s + d.lelaki,    0),
+        perempuan: rows.reduce((s, d) => s + d.perempuan, 0),
+        count:     rows.length,
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // POPULATE INSTITUTION DROPDOWN (once, from SOURCE)
+    // ═══════════════════════════════════════════════════════════════════
+    (function populateDropdown() {
+      const sel = document.getElementById("institusiFilter");
+      SOURCE.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d.institusi;
+        opt.textContent = d.institusi;
+        sel.appendChild(opt);
+      });
+    })();
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FILTER CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+    function applyFilter() {
+      activeFilter = document.getElementById("institusiFilter").value;
+      refreshAll();
+    }
+
+    function resetFilter() {
+      activeFilter = "";
+      document.getElementById("institusiFilter").value = "";
+      document.getElementById("tableSearch").value = "";
+      refreshAll();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // REFRESH ALL — called on every filter change
+    // ═══════════════════════════════════════════════════════════════════
+    function refreshAll() {
+      const rows = getView();
+      const agg  = aggregate(rows);
+
+      updateFilterStatus(rows);
+      updateKPIs(agg);
+      updateDonut(agg);
+      updateBar(rows);
+      updateInsights(rows, agg);
+      renderTable();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FILTER STATUS LABEL
+    // ═══════════════════════════════════════════════════════════════════
+    function updateFilterStatus(rows) {
+      const el = document.getElementById("filterStatus");
+      if (!activeFilter) {
+        el.innerHTML = `Menunjukkan <strong>semua ${SOURCE.length} institusi</strong>`;
+      } else {
+        el.innerHTML = `Menunjukkan <strong>${activeFilter}</strong> sahaja`;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KPI CARDS
+    // ═══════════════════════════════════════════════════════════════════
+    function updateKPIs(agg) {
+      document.getElementById("kpiTotal").textContent        = fmt(agg.jumlah);
+      document.getElementById("kpiInstitutions").textContent = agg.count;
+      document.getElementById("kpiLelaki").textContent       = fmt(agg.lelaki);
+      document.getElementById("kpiPerempuan").textContent    = fmt(agg.perempuan);
+
+      const lPct = pct(agg.lelaki,    agg.jumlah);
+      const pPct = pct(agg.perempuan, agg.jumlah);
+      document.getElementById("kpiLelakiPct").textContent    = `${lPct}% daripada jumlah`;
+      document.getElementById("kpiPerempuanPct").textContent = `${pPct}% daripada jumlah`;
+
+      const instLabel = activeFilter
+        ? "1 institusi dipilih"
+        : `${agg.count} institusi disenaraikan`;
+      document.getElementById("kpiInstSub").textContent = instLabel;
+      document.getElementById("kpiTotalSub").textContent = activeFilter
+        ? `Peserta di ${activeFilter}`
+        : "Keseluruhan peserta berdaftar";
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DONUT CHART
+    // ═══════════════════════════════════════════════════════════════════
+    function updateDonut(agg) {
+      const total = agg.jumlah;
+      const lPct  = pct(agg.lelaki,    total);
+      const pPct  = pct(agg.perempuan, total);
+
+      if (donutChart) {
+        donutChart.data.datasets[0].data = [agg.lelaki, agg.perempuan];
+        donutChart.options.plugins.subtitle.text = `${fmt(total)} peserta`;
+        donutChart.update();
+        return;
+      }
+
+      donutChart = new Chart(document.getElementById("donutChart").getContext("2d"), {
+        type: "doughnut",
+        data: {
+          labels: ["Lelaki", "Perempuan"],
+          datasets: [{
+            data: [agg.lelaki, agg.perempuan],
+            backgroundColor: ["#1E3A5F", "#4A90B8"],
+            borderWidth: 3,
+            borderColor: "#fff",
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          cutout: "70%",
+          plugins: {
+            subtitle: {
+              display: true,
+              text: `${fmt(total)} peserta`,
+              color: "#6B7A8D",
+              font: { size: 11 },
+              padding: { bottom: 6 },
+            },
+            legend: {
+              position: "bottom",
+              labels: { padding: 16, font: { size: 11 }, color: "#111827", usePointStyle: true, pointStyleWidth: 9 }
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed;
+                  const p = pct(v, total);
+                  return `  ${ctx.label}: ${fmt(v)} peserta (${p}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HORIZONTAL BAR CHART — sorted descending by jumlah
+    // ═══════════════════════════════════════════════════════════════════
+    function updateBar(rows) {
+      const sorted = [...rows].sort((a, b) => b.jumlah - a.jumlah);
+      const labels = sorted.map(d => d.institusi);
+      const values = sorted.map(d => d.jumlah);
+      const barH   = Math.max(300, sorted.length * 28);
+
+      if (barChart) {
+        barChart.data.labels                    = labels;
+        barChart.data.datasets[0].data          = values;
+        barChart.data.datasets[0].backgroundColor = values.map((_, i) => i === 0 ? "#4A90B8" : "#1E3A5F");
+        barChart.canvas.parentElement.style.height = barH + "px";
+        barChart.resize();
+        barChart.update();
+        return;
+      }
+
+      document.getElementById("barChart").parentElement.style.height = barH + "px";
+      barChart = new Chart(document.getElementById("barChart").getContext("2d"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Bilangan Peserta",
+            data: values,
+            backgroundColor: values.map((_, i) => i === 0 ? "#4A90B8" : "#1E3A5F"),
+            borderRadius: 4,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: idx => sorted[idx[0].dataIndex].institusi,
+                label: ctx => {
+                  const d = sorted[ctx.dataIndex];
+                  const p = pct(d.jumlah, aggregate(rows).jumlah);
+                  return [
+                    `  Jumlah: ${fmt(d.jumlah)} (${p}%)`,
+                    `  Lelaki: ${fmt(d.lelaki)}`,
+                    `  Perempuan: ${fmt(d.perempuan)}`,
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: "#6B7A8D", font: { size: 10 } },
+              grid: { color: "#E4EAF0" },
+              border: { display: false },
+            },
+            y: {
+              ticks: { color: "#111827", font: { size: 11 }, autoSkip: false },
+              grid: { display: false },
+              border: { display: false },
+            }
+          }
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INSIGHTS — derived from filtered data
+    // ═══════════════════════════════════════════════════════════════════
+    function updateInsights(rows, agg) {
+      const sorted  = [...rows].sort((a, b) => b.jumlah - a.jumlah);
+      const nonZero = rows.filter(d => d.jumlah > 0);
+      const lowest  = nonZero.length ? nonZero.reduce((m, d) => d.jumlah < m.jumlah ? d : m) : null;
+      const highest = sorted[0] || null;
+
+      const lRatio  = agg.perempuan > 0 ? (agg.lelaki / agg.perempuan).toFixed(2) : "—";
+      const dominan = agg.lelaki >= agg.perempuan ? "Lelaki" : "Perempuan";
+
+      const items = [
+        {
+          label: "Penyertaan Tertinggi",
+          value: highest ? highest.institusi : "—",
+          note:  highest ? `${fmt(highest.jumlah)} peserta` : "",
+        },
+        {
+          label: "Penyertaan Terendah (bukan sifar)",
+          value: lowest ? lowest.institusi : "—",
+          note:  lowest ? `${fmt(lowest.jumlah)} peserta` : "",
+        },
+        {
+          label: "Nisbah Jantina (L:P)",
+          value: `${lRatio} : 1`,
+          note:  `Jantina dominan: ${dominan}`,
+        },
+        {
+          label: "Institusi Diwakili",
+          value: fmt(agg.count),
+          note:  activeFilter ? "institusi dipilih" : `daripada ${SOURCE.length} institusi`,
+        },
+      ];
+
+      document.getElementById("insightsGrid").innerHTML = items.map(i => `
+        <div class="insight-item">
+          <div class="insight-item-label">${i.label}</div>
+          <div class="insight-item-value">${i.value}</div>
+          <div class="insight-item-note">${i.note}</div>
+        </div>`).join("");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // TABLE — search + sort
+    // ═══════════════════════════════════════════════════════════════════
+    function sortTable(key) {
+      if (sortKey === key) sortAsc = !sortAsc;
+      else { sortKey = key; sortAsc = key === "institusi"; }
+      // update header arrows
+      ["institusi","lelaki","perempuan","jumlah"].forEach(k => {
+        const th = document.getElementById("th-" + k);
+        if (!th) return;
+        th.classList.toggle("active-sort", k === sortKey);
+        th.querySelector(".sort-arrow").textContent = k === sortKey ? (sortAsc ? "↑" : "↓") : "↕";
+      });
+      renderTable();
+    }
+
+    function renderTable() {
+      const q    = (document.getElementById("tableSearch").value || "").toLowerCase();
+      const rows = getView();
+      let   view = rows.filter(d => d.institusi.toLowerCase().includes(q));
+
+      view.sort((a, b) => {
+        const va = a[sortKey], vb = b[sortKey];
+        if (typeof va === "string") return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return sortAsc ? va - vb : vb - va;
+      });
+
+      const tbody = document.getElementById("tableBody");
+      document.getElementById("tableCount").textContent = `${view.length} rekod`;
+
+      if (view.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="no-data">Tiada rekod dijumpai.</td></tr>`;
+        return;
+      }
+
+      const total = aggregate(rows).jumlah;
+      tbody.innerHTML = view.map(d => {
+        const lPct = pct(d.lelaki, d.jumlah);
+        return `
+          <tr>
+            <td><strong>${d.institusi}</strong></td>
+            <td class="num">${fmt(d.lelaki)}</td>
+            <td class="num">${fmt(d.perempuan)}</td>
+            <td class="num">${fmt(d.jumlah)}</td>
+            <td>
+              <div class="gender-bar-wrap">
+                <div class="gender-bar"><div class="gender-bar-fill" style="width:${lPct}%"></div></div>
+                <span style="font-size:0.7rem;color:#6B7A8D;white-space:nowrap">${lPct}% L</span>
+              </div>
+            </td>
+          </tr>`;
+      }).join("");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INIT — run on page load
+    // ═══════════════════════════════════════════════════════════════════
+    // Default sort header
+    document.getElementById("th-jumlah").classList.add("active-sort");
+    document.getElementById("th-jumlah").querySelector(".sort-arrow").textContent = "↓";
+
+    refreshAll();
+  </script>
+
+</body>
+</html>
